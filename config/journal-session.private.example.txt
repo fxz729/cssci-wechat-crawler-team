@@ -1,0 +1,16 @@
+﻿# 单刊会话 TXT 输入模板（全部为占位符，无真实凭据）。
+# HOME 为必需：将下面占位符整行替换为完整 GET 请求、完整主页 URL，或 Fiddler TSV 行。
+# 完整请求附有响应时，从第一个 HTTP 响应状态行开始的内容全部忽略。
+# home 必须包含 action=home、__biz、uin、key、pass_ticket。
+<PASTE_HOME_REQUEST_OR_URL_OR_FIDDLER_TSV_HERE>
+
+# URLCHECK 为可选：不用时删除下面占位符行；提供时必须与 home 同会话。
+# 若两个完整请求都需要粘贴，请仅粘贴请求侧内容，不要夹带第一个请求的响应。
+# urlcheck 只用于一致性校验，不补齐 home 缺失字段，不合并其请求头。
+<PASTE_OPTIONAL_URLCHECK_REQUEST_OR_URL_HERE>
+
+# User-Agent 为可选：有真实捕获值时，将请求头放在 HOME 后、URLCHECK 前。
+# 示例占位行：User-Agent: <PASTE_CAPTURED_USER_AGENT_HERE>
+# 不要保留未替换的占位符；不得猜测客户端版本、身份或 Cookie。
+# TSV 相对路径必须有明确 HTTPS、Host 和 URL 列；Host 只能是 mp.weixin.qq.com。
+# 仅解析不代表会话有效；后续预检由调用方负责。不要把真实输入提交或写入公开日志。

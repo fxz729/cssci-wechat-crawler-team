@@ -1,0 +1,9 @@
+[project]
+name = "cssci-wechat-crawler"
+version = "0.1.0"
+description = "CSSCI journal WeChat article crawler"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -1,0 +1,25 @@
+﻿[CmdletBinding()]
+param([string]$Destination='',[switch]$Archive,[switch]$Force)
+$ErrorActionPreference='Stop'; [Console]::OutputEncoding=[Text.UTF8Encoding]::new()
+$ProjectRoot=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+if(-not $Destination){$Destination=Join-Path (Split-Path $ProjectRoot -Parent) ('cssci-wechat-crawler-team-handoff-'+(Get-Date -Format 'yyyyMMdd-HHmmss'))}
+$Destination=(Resolve-Path (Split-Path $Destination -Parent) -ErrorAction Stop).Path+'\'+(Split-Path $Destination -Leaf)
+if(Test-Path -LiteralPath $Destination){if(-not $Force){throw "destination_exists:$Destination"};Remove-Item -LiteralPath $Destination -Recurse -Force}
+New-Item -ItemType Directory -Path $Destination -Force|Out-Null
+$run=Join-Path $ProjectRoot 'output\rollout\full_126';$stagedRun=Join-Path $Destination 'output\rollout\full_126'
+function Copy-Robo([string]$Source,[string]$Target,[string[]]$Extra){New-Item -ItemType Directory -Path $Target -Force|Out-Null;& robocopy.exe $Source $Target /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NP @Extra|Out-Null;if($LASTEXITCODE -gt 7){throw "robocopy_failed:$LASTEXITCODE source=$Source"}}
+Copy-Robo $ProjectRoot $Destination @('/XD','.git','.pytest_cache','__pycache__','output','logs','.venv','node_modules','capture')
+Copy-Robo (Join-Path $run 'delivery') (Join-Path $stagedRun 'delivery') @()
+$pilot=Join-Path $Destination 'output\pilot_20260906';New-Item -ItemType Directory -Path $pilot -Force|Out-Null; $candidate=Get-Content (Join-Path $ProjectRoot 'output\pilot_20260906\CustomRules.cssci-candidate.js') -Raw; $candidate=$candidate.Replace($ProjectRoot,$Destination); Set-Content (Join-Path $pilot 'CustomRules.cssci-candidate.js') $candidate -Encoding utf8; '{"enabled":false,"target_biz":"","expires_at":null,"diagnostic_enabled":false,"diagnostic_expires_at":null,"diagnostic_after_id":0,"diagnostic_all_articles":false,"diagnostic_mid":"","diagnostic_idx":""}' | Set-Content (Join-Path $pilot 'capture_control.json') -Encoding utf8; New-Item -ItemType File -Path (Join-Path $pilot 'capture_inbox.jsonl') -Force|Out-Null
+New-Item -ItemType Directory -Path $stagedRun -Force|Out-Null
+$topFiles=@('run_manifest.json','run_control.json','journal_backfill_queue.jsonl','skipped_retry_queue.jsonl','metrics_retry_queue.jsonl','backfill_progress.json','backfill_results.jsonl','msaa_progress.jsonl','cached_import_results.json')
+foreach($name in $topFiles){$src=Join-Path $run $name;if(Test-Path $src){Copy-Item -LiteralPath $src -Destination (Join-Path $stagedRun $name) -Force}}
+foreach($journal in Get-ChildItem (Join-Path $run 'journals') -Directory -ErrorAction SilentlyContinue){$target=Join-Path $stagedRun ('journals\'+$journal.Name);foreach($relative in @('msaa\state.json','bundle\complete.json','bundle\文章数据.csv','bundle\媒体索引.csv','capture_cache_summary.json')){$src=Join-Path $journal.FullName $relative;if(Test-Path -LiteralPath $src){$dst=Join-Path $target $relative;New-Item -ItemType Directory -Path (Split-Path $dst -Parent) -Force|Out-Null;Copy-Item -LiteralPath $src -Destination $dst -Force}}}
+$py=if(Test-Path 'D:\miniforge3\python.exe'){'D:\miniforge3\python.exe'}else{(Get-Command python.exe -ErrorAction Stop).Source};$rebase=Join-Path $Destination 'export\rebase_delivery_paths.py'
+foreach($name in @('文章数据.csv','媒体索引.csv')){$src=Join-Path $stagedRun ('delivery\'+$name);if(Test-Path $src){$tmp=$src+'.portable.tmp';& $py -X utf8 -B $rebase --input $src --output $tmp --delivery-root (Join-Path $stagedRun 'delivery');if($LASTEXITCODE -ne 0){throw "rebase_delivery_failed:$name"};Move-Item -LiteralPath $tmp -Destination $src -Force}}
+$manifest=[ordered]@{schema_version=1;created_at=(Get-Date).ToUniversalTime().ToString('o');source_project=$ProjectRoot;package_root=$Destination;results_included=$true;raw_capture_included=$false;excluded=@('output/pilot_20260906','output/rollout/full_126/capture','raw Fiddler archives','runtime caches','git metadata');startup='scripts/start_team_handoff.ps1';bootstrap='scripts/bootstrap_handoff.ps1';result_csv='output/rollout/full_126/delivery/文章数据.csv';media_index='output/rollout/full_126/delivery/媒体索引.csv'}
+$manifest|ConvertTo-Json -Depth 8|Set-Content (Join-Path $Destination 'HANDOFF_MANIFEST.json') -Encoding utf8
+$readme=@('# 队友电脑一键交接','','1. 安装/登录旧版微信，安装并打开 Fiddler。','2. 在项目根目录执行：','', '```powershell','.\scripts\bootstrap_handoff.ps1','.\scripts\start_team_handoff.ps1','```','', '暂停：.\scripts\stop_full_run.ps1','查看状态：.\scripts\show_full_run_status.ps1','', '启动脚本会自动合并旧 bundle、补采队列和旧 CSV，修复迁移后的 manifest 路径，跳过已完成期刊，继续未完成及补采任务，并在每刊结束再次导出总 CSV。','', '结果：output\rollout\full_126\delivery\文章数据.csv、媒体索引.csv 和同级 附件。','CSV 的本地文件路径已经改为相对于 delivery 的路径。')
+$readme|Set-Content (Join-Path $Destination '队友启动说明.md') -Encoding utf8
+if($Archive){$seven=Get-Command 7z.exe -ErrorAction SilentlyContinue;if(-not $seven){throw '7z_not_found：已生成文件夹包'};$archive=$Destination+'.7z';& $seven.Source a -t7z -mx=1 $archive (Join-Path $Destination '*')|Out-Null;if($LASTEXITCODE -ne 0){throw "archive_failed:$LASTEXITCODE"};Write-Host "归档完成：$archive"}
+Write-Host "交接包目录：$Destination"

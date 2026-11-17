@@ -1,0 +1,16 @@
+[Unit]
+Description=CSSCI WeChat history crawler
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=cssci-crawler
+Group=cssci-crawler
+WorkingDirectory=/opt/cssci-wechat-crawler
+ExecStart=/usr/bin/flock -n /var/lib/cssci-wechat/crawler.lock /opt/cssci-wechat-crawler/.venv/bin/python main.py --db sqlite:////var/lib/cssci-wechat/cssci_wechat.db crawl-history --sessions-file /etc/cssci-wechat/wechat-sessions.private.txt --journal-links data/sources/CSSCI来源刊公众号主页链接.md --max-accounts 1 --resume
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/cssci-wechat /var/log/cssci-wechat /opt/cssci-wechat-crawler/data

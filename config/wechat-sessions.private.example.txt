@@ -1,0 +1,13 @@
+# Copy this file to config/wechat-sessions.private.txt and replace every placeholder.
+# Never commit, synchronize, or archive the private file.
+# Requests under one session label may be merged only with each other.
+
+### session: desktop-01
+GET https://mp.weixin.qq.com/cgi-bin/appmsgpublish?action=list_ex&token=REPLACE_BACKEND_TOKEN&fingerprint=REPLACE_FINGERPRINT HTTP/1.1
+User-Agent: REPLACE_WITH_ORIGINAL_USER_AGENT
+Cookie: slave_sid=REPLACE; data_ticket=REPLACE; wxuin=REPLACE
+
+# Optional: paste a same-session article-page or geticon request to add missing article Cookie fields.
+GET https://mp.weixin.qq.com/mp/geticon?biz=REPLACE_BIZ&mid=REPLACE_MID&idx=1 HTTP/1.1
+User-Agent: REPLACE_WITH_ORIGINAL_USER_AGENT
+Cookie: appmsg_token=REPLACE; wap_sid2=REPLACE; pass_ticket=REPLACE; wxtokenkey=777; devicetype=UnifiedPCWindows; version=f2541b36

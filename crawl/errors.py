@@ -1,0 +1,2 @@
+class SessionUnavailable(RuntimeError):
+    pass
